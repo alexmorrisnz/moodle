@@ -2707,6 +2707,8 @@ class admin_setting_configcheckbox extends admin_setting {
     public $yes;
     /** @var string Value used when not checked */
     public $no;
+    /** @var boolean Is the checkbox disabled */
+    public $disabled;
 
     /**
      * Constructor
@@ -2716,11 +2718,13 @@ class admin_setting_configcheckbox extends admin_setting {
      * @param string $defaultsetting
      * @param string $yes value used when checked
      * @param string $no value used when not checked
+     * @param boolean $disabled is used for checkboxes that are disabled but cannot be toggled
      */
-    public function __construct($name, $visiblename, $description, $defaultsetting, $yes='1', $no='0') {
+    public function __construct($name, $visiblename, $description, $defaultsetting, $yes='1', $no='0', $disabled = false) {
         parent::__construct($name, $visiblename, $description, $defaultsetting);
         $this->yes = (string)$yes;
         $this->no  = (string)$no;
+        $this->disabled = $disabled;
     }
 
     /**
@@ -2766,6 +2770,7 @@ class admin_setting_configcheckbox extends admin_setting {
             'no' => $this->no,
             'value' => $this->yes,
             'checked' => (string) $data === $this->yes,
+            'disabled' => $this->disabled,
         ];
 
         $default = $this->get_defaultsetting();
@@ -8876,6 +8881,11 @@ class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
      */
     public function get_setting() {
         global $CFG;
+
+        // Check if defined by config.php
+        if (array_key_exists($this->name, $CFG->config_php_settings)) {
+            $this->disabled = true;
+        }
 
         // First check if is not set.
         $result = $this->config_read($this->name);
