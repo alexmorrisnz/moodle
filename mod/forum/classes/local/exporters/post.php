@@ -401,7 +401,7 @@ class post extends exporter {
         } else {
             $subject = $isdeleted ? get_string('forumsubjectdeleted', 'forum') : get_string('forumsubjecthidden', 'forum');
             $message = $isdeleted ? get_string('forumbodydeleted', 'forum') : get_string('forumbodyhidden', 'forum');
-            $timecreated = null;
+            $timecreated = $isdeleted ? null : $post->get_time_created();
 
             if ($isdeleted) {
                 $exportedauthor->fullname = null;
