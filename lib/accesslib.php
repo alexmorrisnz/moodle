@@ -6706,7 +6706,7 @@ class context_coursecat extends context {
             // Normal top level categories
             $sql = "UPDATE {context}
                        SET depth=2,
-                           path=".$DB->sql_concat("'$base/'", 'id')."
+                           path=".$DB->sql_concat("'$base/'", 'CAST(id as string)')."
                      WHERE contextlevel=".CONTEXT_COURSECAT."
                            AND EXISTS (SELECT 'x'
                                          FROM {course_categories} cc

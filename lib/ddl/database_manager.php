@@ -593,8 +593,25 @@ class database_manager {
         if (!$sqlarr = $this->generator->getAlterFieldSQL($xmldb_table, $xmldb_field)) {
             return; // probably nothing to do
         }
+        
+        # If the querry creates a temp column we need to
+        # create it in a seperate transaction
+        if (preg_match('/ADD COLUMN (.*_temp[\d]+)/', $sqlarr[0], $matches)){
+            $arg1 = array_slice($sqlarr, 0, 1);
+            $arg2 = array_slice($sqlarr, 1);
+            
+            $this->execute_sql_arr($arg1, array($xmldb_table->getName()));
 
-        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
+            try {
+                $this->execute_sql_arr($arg2, array($xmldb_table->getName()));
+            } catch (moodle_exception $e) {
+                $this->execute_sql('ALTER TABLE ' . $xmldb_table->getName() . ' DROP COLUMN ' . $matches[1]);
+                throw $e;
+            }
+        }
+        else {
+            $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
+        }
     }
 
     /**

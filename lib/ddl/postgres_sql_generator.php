@@ -130,7 +130,6 @@ class postgres_sql_generator extends sql_generator {
                 $sqls[] = $newindex;
             }
         }
-
         return $sqls;
     }
 
