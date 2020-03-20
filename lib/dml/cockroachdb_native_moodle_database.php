@@ -47,16 +47,45 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
     public function change_database_structure($sql, $tablenames = null) {
         $this->get_manager(); // Includes DDL exceptions classes ;-)
 
-        #error_log(print_r($sql, true));
         if (is_array($sql)) {
-            $sql = implode("\n;\n", $sql) . ';';
-        }
+            if (preg_match('/UPDATE TABLE (.*) ADD COLUMN (.*_temp[\d]+)/', $sql[0], $matches)){
+                error_log('split args');
+                $arg1 = $sql[0];
+                $arg2 = array_slice($sql, 1);
+                $arg2 = implode("\n;\n", $arg2) . ';';
 
-        #error_log($sql);
-        $this->query_start($sql, null, SQL_QUERY_STRUCTURE);
-        $result = pg_query($this->pgsql, $sql);
-        $this->query_end($result);
-        pg_free_result($result);
+                $this->query_start($arg1, null, SQL_QUERY_STRUCTURE);
+                $result = pg_query($this->pgsql, $arg1);
+                $this->query_end($result);
+                pg_free_result($result);
+
+                try {
+                    $this->query_start($arg2, null, SQL_QUERY_STRUCTURE);
+                    $result = pg_query($this->pgsql, $arg2);
+                    $this->query_end($result);
+                    pg_free_result($result);
+                } catch (moodle_exception $e) {
+                    $sql = 'ALTER TABLE ' . $matches[1] . ' DROP COLUMN ' . $matches[2];
+                    $this->query_start($sql, null, SQL_QUERY_STRUCTURE);
+                    $result = pg_query($this->pgsql, $sql);
+                    $this->query_end($result);
+                    pg_free_result($result);
+
+                    throw $e;
+                }
+            } else {
+                $sql = implode("\n;\n", $sql) . ';';
+                $this->query_start($sql, null, SQL_QUERY_STRUCTURE);
+                $result = pg_query($this->pgsql, $sql);
+                $this->query_end($result);
+                pg_free_result($result);
+            }            
+        } else{
+            $this->query_start($sql, null, SQL_QUERY_STRUCTURE);
+            $result = pg_query($this->pgsql, $sql);
+            $this->query_end($result);
+            pg_free_result($result);
+        }
 
         $this->reset_caches($tablenames);
         return true;
@@ -85,16 +114,12 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
         $this->temptables = new moodle_temptables($this);
     }
 
-    /**
-     * Called immediately after each db query.
-     * @param mixed db specific result
-     * @return void
-     */
-    protected function query_end($result) {
-        // reset original debug level
-        error_reporting($this->last_error_reporting);
-        
-        parent::query_end($result);
+    # cockroachdb doesn't support locking
+    # so we won't waste time running pg_advisory_lock()
+    # see: https://github.com/cockroachdb/cockroach/issues/13546
+    #      https://github.com/cockroachdb/cockroach/issues/6583
+    public function session_lock_supported() {
+        return false;
     }
 
     /**
@@ -103,12 +128,10 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
      * @return void
      */
     protected function begin_transaction() {
-        $sql = "BEGIN ISOLATION LEVEL READ COMMITTED;";
-        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $sql = "BEGIN";
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
-
-        pg_free_result($result);
     }
 
     /**
@@ -118,13 +141,24 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
      */
     protected function commit_transaction() {
         $sql = "COMMIT";
-        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $result = pg_query($this->pgsql, $sql);
+        $this->query_end($result);
+    }
+
+    /**
+     * Driver specific abort of real database transaction,
+     * this can not be used directly in code.
+     * @return void
+     */
+    protected function rollback_transaction() {
+        $sql = "ROLLBACK";
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
 
-        pg_free_result($result);
+        return true;
     }
-
     
     public function sql_concat() {
         $arr = func_get_args();

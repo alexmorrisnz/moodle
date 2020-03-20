@@ -412,8 +412,11 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
             #    ' TYPE' . $this->getFieldSQL($xmldb_table, $xmldb_field, null, true, true, null, false);
             // Some castings must be performed explicitly (mainly from text|char to numeric|integer)
             if (($oldmetatype == 'C' || $oldmetatype == 'X') &&
-                ($xmldb_field->getType() == XMLDB_TYPE_NUMBER || $xmldb_field->getType() == XMLDB_TYPE_FLOAT)) {
+                ($xmldb_field->getType() == XMLDB_TYPE_NUMBER)) {
                 $alterstmt .= ' CAST('.$fieldname.' AS NUMERIC)'; // from char or text to number or float
+            } else if (($oldmetatype == 'C' || $oldmetatype == 'X') &&
+                $xmldb_field->getType() == XMLDB_TYPE_FLOAT) {
+                $alterstmt .= ' CAST('.$fieldname.' AS FLOAT)'; // From char to integer
             } else if (($oldmetatype == 'C' || $oldmetatype == 'X') &&
                 $xmldb_field->getType() == XMLDB_TYPE_INTEGER) {
                 $alterstmt .= ' CAST(CAST('.$fieldname.' AS NUMERIC) AS INTEGER)'; // From char to integer
@@ -476,7 +479,6 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
         else {
             return array();
         }
-        
     }
 
     /**
