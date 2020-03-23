@@ -300,14 +300,14 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
         $oldseqname = $this->getTableName($xmldb_table) . '_' . $xmldb_field->getName() . '_seq';
         $newseqname = $this->getTableName($newt) . '_' . $xmldb_field->getName() . '_seq';
 
-        # remove the defualt from the column otherwise we can't rename the sequence as per
-        # https://www.cockroachlabs.com/docs/stable/rename-sequence.html
+        // remove the defualt from the column otherwise we can't rename the sequence as per
+        // https://www.cockroachlabs.com/docs/stable/rename-sequence.html
         $results[] = 'ALTER TABLE ' . $this->getTableName($newt) . " ALTER COLUMN " . $xmldb_field->getName() . ' DROP DEFAULT';
 
         // Rename the sequence
         $results[] = 'ALTER SEQUENCE ' . $oldseqname . ' RENAME TO ' . $newseqname;
         
-        # re-add the default sequence
+        // re-add the default sequence
         $results[] = 'ALTER TABLE ' . $this->getTableName($newt) . " ALTER COLUMN " . $xmldb_field->getName() . ' SET DEFAULT ' . "nextval('" . $newseqname . "':::STRING)";
 
         return $results;
@@ -396,9 +396,9 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
         // Decide if we have changed the column specs (type/precision/decimals)
         $specschanged = $typechanged || $precisionchanged || $decimalchanged;
 
-        # add some randomness into the columnname to mitigate leftover temp columns
-        # as there is some possiblity of these being leftover if moodle is 
-        # killed during a migration
+        // Add some randomness into the columnname to mitigate leftover temp columns
+        // as there is some possiblity of these being leftover if moodle is 
+        // killed during a migration
         $tempcolumnnname = $fieldname . '__temp' . rand();
 
         // if specs have changed, need to alter column
@@ -408,8 +408,6 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
 
             $alterstmt = 'UPDATE '. $tablename . ' SET ' . $tempcolumnnname . ' = ';
 
-            #$alterstmt = 'ALTER TABLE ' . $tablename . ' ALTER COLUMN ' . $this->getEncQuoted($xmldb_field->getName()) .
-            #    ' TYPE' . $this->getFieldSQL($xmldb_table, $xmldb_field, null, true, true, null, false);
             // Some castings must be performed explicitly (mainly from text|char to numeric|integer)
             if (($oldmetatype == 'C' || $oldmetatype == 'X') &&
                 ($xmldb_field->getType() == XMLDB_TYPE_NUMBER)) {
@@ -430,11 +428,6 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
 
             $results[] = 'ALTER TABLE '. $tablename . ' DROP COLUMN ' . $fieldname;
             $results[] = 'ALTER TABLE '. $tablename . ' RENAME COLUMN ' . $tempcolumnnname . ' TO ' . $fieldname;
-
-            # todo: we need to deal with updates that don't work, ie invalid entries in tables
-            # Somehow we need to get the info up to dbmanager/native cockroachdb
-            # that we are doing a column update, it won't be transactional 
-            # and do some error handling.
         }
 
         // If the default has changed or we have performed one change in specs
@@ -518,7 +511,7 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
      * @throws coding_exception Thrown if the xmldb_index does not validate with the xmldb_table.
      */
     public function getCreateIndexSQL($xmldb_table, $xmldb_index) {
-        # cockroachdb does not support varchar_pattern_ops
+        // cockroachdb does not support varchar_pattern_ops
         $sqls = sql_generator::getCreateIndexSQL($xmldb_table, $xmldb_index);
         return $sqls;
     }

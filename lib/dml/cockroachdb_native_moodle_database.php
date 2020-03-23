@@ -94,21 +94,21 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
     public function connect($dbhost, $dbuser, $dbpass, $dbname, $prefix, array $dboptions=null) {
         global $DB;
 
-        # cockroach db default is 26257 rather than 5432
+        // cockroach db default is 26257 rather than 5432
         if (empty($dboptions['dbport'])) {
             $dboptions['dbport'] = '26257';
         }
 
-        # fetchbuffer must be set to 0 to disable cursors
-        # cockroachdb does not support cursors: https://github.com/cockroachdb/cockroach/issues/30352
+        // fetchbuffer must be set to 0 to disable cursors
+        // cockroachdb does not support cursors: https://github.com/cockroachdb/cockroach/issues/30352
         $dboptions['fetchbuffersize'] = "0";
 
         parent::connect($dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions);
 
-        # turn on expiremental cockroach savepoints
+        // turn on expiremental cockroach savepoints
         $this->execute('SET force_savepoint_restart=true');
 
-        # set expiremental serial normalization
+        // set expiremental serial normalization
         $this->execute('SET experimental_serial_normalization TO sql_sequence');
 
         $this->temptables = new moodle_temptables($this);
@@ -162,9 +162,9 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
     
     public function sql_concat() {
         $arr = func_get_args();
-        # cast explicitly for concat, cockroachdb does not allow
-        # implicit casts on sql concats
-        # https://github.com/cockroachdb/cockroach/issues/34404
+        // cast explicitly for concat, cockroachdb does not allow
+        // implicit casts on sql concats
+        // https://github.com/cockroachdb/cockroach/issues/34404
         $func = function($value) {
             if (preg_match("/\'.*\'/", $value, $match)){
                 return $value;
@@ -239,7 +239,7 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
             $result = pg_query($this->pgsql, $sql);
             $this->query_end($result);
         }
-        # todo: make this nicer, ie catch a smaller exception or do a query that returns empty
+        // we want to return an empty array if there's no table rather than an exception
         catch (moodle_exception $e) {
             return array();
         }
