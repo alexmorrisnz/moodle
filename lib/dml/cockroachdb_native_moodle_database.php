@@ -124,7 +124,6 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
         try {
             moodle_database::query_end($result);
             if ($this->savepointpresent and $this->last_type != SQL_QUERY_AUX and $this->last_type != SQL_QUERY_SELECT) {
-                error_log("COMMIT; BEGIN");
                 $res = @pg_query($this->pgsql, "COMMIT; BEGIN");
                 if ($res) {
                     pg_free_result($res);
@@ -132,7 +131,6 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
             }
         } catch (Exception $e) {
             if ($this->savepointpresent) {
-                error_log("ROLLBACK; BEGIN");
                 $res = @pg_query($this->pgsql, "ROLLBACK; BEGIN");
                 if ($res) {
                     pg_free_result($res);
