@@ -306,7 +306,7 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
 
         // Rename the sequence
         $results[] = 'ALTER SEQUENCE ' . $oldseqname . ' RENAME TO ' . $newseqname;
-        
+
         // re-add the default sequence
         $results[] = 'ALTER TABLE ' . $this->getTableName($newt) . " ALTER COLUMN " . $xmldb_field->getName() . ' SET DEFAULT ' . "nextval('" . $newseqname . "':::STRING)";
 
@@ -490,7 +490,7 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
      * https://github.com/cockroachdb/cockroach/issues/5807
      *
      * Create a regular table and rely on the base sql_generator to clean up.
-     * 
+     *
      * @param xmldb_table $xmldb_table The xmldb_table object instance.
      * @return array of sql statements
      */
