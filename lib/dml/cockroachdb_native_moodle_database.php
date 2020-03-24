@@ -49,7 +49,6 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
 
         if (is_array($sql)) {
             if (preg_match('/UPDATE TABLE (.*) ADD COLUMN (.*_temp[\d]+)/', $sql[0], $matches)){
-                error_log('split args');
                 $arg1 = $sql[0];
                 $arg2 = array_slice($sql, 1);
                 $arg2 = implode("\n;\n", $arg2) . ';';
@@ -114,6 +113,35 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
         $this->temptables = new moodle_temptables($this);
     }
 
+    /**
+     * Called immediately after each db query.
+     * @param mixed db specific result
+     * @return void
+     */
+    protected function query_end($result) {
+        // reset original debug level
+        error_reporting($this->last_error_reporting);
+        try {
+            moodle_database::query_end($result);
+            if ($this->savepointpresent and $this->last_type != SQL_QUERY_AUX and $this->last_type != SQL_QUERY_SELECT) {
+                error_log("COMMIT; BEGIN");
+                $res = @pg_query($this->pgsql, "COMMIT; BEGIN");
+                if ($res) {
+                    pg_free_result($res);
+                }
+            }
+        } catch (Exception $e) {
+            if ($this->savepointpresent) {
+                error_log("ROLLBACK; BEGIN");
+                $res = @pg_query($this->pgsql, "ROLLBACK; BEGIN");
+                if ($res) {
+                    pg_free_result($res);
+                }
+            }
+            throw $e;
+        }
+    }
+
     # cockroachdb doesn't support locking
     # so we won't waste time running pg_advisory_lock()
     # see: https://github.com/cockroachdb/cockroach/issues/13546
@@ -128,6 +156,7 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
      * @return void
      */
     protected function begin_transaction() {
+        $this->savepointpresent = true;
         $sql = "BEGIN";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
@@ -140,6 +169,7 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
      * @return void
      */
     protected function commit_transaction() {
+        $this->savepointpresent = false;
         $sql = "COMMIT";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
@@ -152,6 +182,7 @@ class cockroachdb_native_moodle_database extends pgsql_native_moodle_database {
      * @return void
      */
     protected function rollback_transaction() {
+        $this->savepointpresent = false;
         $sql = "ROLLBACK";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = pg_query($this->pgsql, $sql);
