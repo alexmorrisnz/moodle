@@ -313,6 +313,26 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
         return $results;
     }
 
+	public function getCreateIndexSQL($xmldb_table, $xmldb_index) {
+		if ($error = $xmldb_index->validateDefinition($xmldb_table)) {
+			throw new coding_exception($error);
+		}
+
+		$unique = '';
+		$suffix = 'ix';
+		if ($xmldb_index->getUnique()) {
+			$unique = ' UNIQUE';
+			$suffix = 'uix';
+		}
+
+		$index = 'CREATE' . $unique . ' INDEX ';
+		$index .= $this->getNameForObject($xmldb_table->getName(), implode(', ', $xmldb_index->getFields()), $suffix);
+		$index .= ' ON ' . $this->getTableName($xmldb_table);
+		$index .= ' (' . implode(', ', $this->getEncQuoted($xmldb_index->getFields())) . ')';
+
+		return array($index);
+	}
+
     /**
      * Given one xmldb_table and one xmldb_field, return the SQL statements needed to alter the field in the table.
      *
@@ -397,7 +417,7 @@ class cockroachdb_sql_generator extends postgres_sql_generator {
         $specschanged = $typechanged || $precisionchanged || $decimalchanged;
 
         // Add some randomness into the columnname to mitigate leftover temp columns
-        // as there is some possiblity of these being leftover if moodle is 
+        // as there is some possiblity of these being leftover if moodle is
         // killed during a migration
         $tempcolumnnname = $fieldname . '__temp' . rand();
 
