@@ -649,6 +649,8 @@ class assign {
             $o .= $this->view_grading_page();
         } else if ($action == 'downloadall') {
             $o .= $this->download_submissions();
+        } else if ($action == 'downloadallfeedback') {
+            $o .= $this->download_feedback('assign_feedback_editpdf');
         } else if ($action == 'submit') {
             $o .= $this->check_submit_for_grading($mform);
         } else if ($action == 'grantextension') {
@@ -3501,6 +3503,153 @@ class assign {
     }
 
     /**
+     * Download a zip file of all feedback files.
+     *
+     * @param string $pluginname Feedback plugin name we will download from
+     * @param array $userids Array of user ids to download assignment feedback in a zip file
+     * @return string - If an error occurs, this will contain the error page.
+     */
+    protected function download_feedback($pluginname = null, $userids = false) {
+        global $CFG;
+
+        if (!class_exists($pluginname)) {
+            exit();
+        }
+        foreach ($this->feedbackplugins as $plugin) {
+            if (get_class($plugin) == $pluginname) {
+                break;
+            }
+        }
+        if (!class_exists($pluginname) || !($plugin instanceof assign_feedback_plugin)) {
+            exit();
+        }
+        if (!$plugin->is_enabled() || !$plugin->is_visible() || !method_exists($plugin, 'get_files')) {
+            exit();
+        }
+
+        // More efficient to load this here.
+        require_once($CFG->libdir.'/filelib.php');
+
+        // Increase the server timeout to handle the creation and sending of large zip files.
+        core_php_time_limit::raise();
+
+        $this->require_view_grades();
+
+        // Load all users with submit.
+        $students = get_enrolled_users($this->context, "mod/assign:submit", null, 'u.*', null, null, null,
+            $this->show_only_active_users());
+
+        // Build a list of files to zip.
+        $filesforzipping = array();
+
+        $groupmode = groups_get_activity_groupmode($this->get_course_module());
+        // All users.
+        $groupid = 0;
+        $groupname = '';
+        if ($groupmode) {
+            $groupid = groups_get_activity_group($this->get_course_module(), true);
+            if (!empty($groupid)) {
+                $groupname = groups_get_group_name($groupid) . '-';
+            }
+        }
+
+        // Construct the zip file name.
+        $filename = clean_filename($this->get_course()->shortname . '-' .
+            $this->get_instance()->name . '-feedback-' .
+            $groupname.$this->get_course_module()->id . '.zip');
+
+        // Get all the feedback files for each student.
+        foreach ($students as $student) {
+            $userid = $student->id;
+            // Download all assigments feedback or only selected users.
+            if ($userids and !in_array($userid, $userids)) {
+                continue;
+            }
+
+            if ((groups_is_member($groupid, $userid) or !$groupmode or !$groupid)) {
+                // Get the plugins to add their own files to the zip.
+                $grade = $this->get_user_grade($userid, false);
+
+                if ($this->is_blind_marking()) {
+                    $prefix = str_replace('_', ' ', $groupname . get_string('participant', 'assign'));
+                    $prefix = clean_filename($prefix . '_' . $this->get_uniqueid_for_user($userid));
+                } else {
+                    $fullname = fullname($student, has_capability('moodle/site:viewfullnames', $this->get_context()));
+                    $prefix = str_replace('_', ' ', $groupname . $fullname);
+                }
+
+                if ($grade) {
+                    $downloadasfolders = get_user_preferences('assign_downloadasfolders', 1);
+                    $subtype = $plugin->get_subtype();
+                    $type = $plugin->get_type();
+                    if ($downloadasfolders) {
+                        // Create a folder for each user for each assignment feedback plugin.
+                        // This is the default behavior for version of Moodle >= 3.1.
+                        $grade->exportfullpath = true;
+                        $pluginfiles = $plugin->get_files($grade, $student);
+                        foreach ($pluginfiles as $zipfilepath => $file) {
+                            $zipfilename = basename($zipfilepath);
+                            $prefixedfilename = clean_filename($prefix .
+                                '_' .
+                                $subtype .
+                                '_' .
+                                $type .
+                                '_');
+                            $pathfilename = $prefixedfilename . '/' . $zipfilename;
+                            $pathfilename = clean_param($pathfilename, PARAM_PATH);
+                            $filesforzipping[$pathfilename] = $file;
+                        }
+                    } else {
+                        // Create a single folder for all users of all assignment feedback plugins.
+                        // This was the default behavior for version of Moodle < 3.1.
+                        $grade->exportfullpath = false;
+                        $pluginfiles = $plugin->get_files($grade, $student);
+                        foreach ($pluginfiles as $zipfilename => $file) {
+                            $prefixedfilename = clean_filename($prefix .
+                                '_' .
+                                $subtype .
+                                '_' .
+                                $type .
+                                '_' .
+                                $zipfilename);
+                            $filesforzipping[$prefixedfilename] = $file;
+                        }
+                    }
+                }
+            }
+        }
+        $result = '';
+        if (count($filesforzipping) == 0) {
+            $header = new assign_header($this->get_instance(),
+                $this->get_context(),
+                '',
+                $this->get_course_module()->id,
+                get_string('downloadallfeedback', 'assign'));
+            $result .= $this->get_renderer()->render($header);
+            $result .= $this->get_renderer()->notification(get_string('nofeedback', 'assign'));
+            $url = new moodle_url('/mod/assign/view.php', array('id' => $this->get_course_module()->id,
+                'action' => 'grading'));
+            $result .= $this->get_renderer()->continue_button($url);
+            $result .= $this->view_footer();
+
+            return $result;
+        }
+
+        \core\session\manager::write_close();
+
+        $zipwriter = \core_files\archive_writer::get_stream_writer($filename, \core_files\archive_writer::ZIP_WRITER);
+
+        // Stream the files into the zip.
+        foreach ($filesforzipping as $pathinzip => $storedfile) {
+            $zipwriter->add_file_from_stored_file($pathinzip, $storedfile);
+        }
+
+        // Finish the archive.
+        $zipwriter->finish();
+        exit();
+    }
+
+    /**
      * Download a zip file of all assignment submissions.
      *
      * @param array $userids Array of user ids to download assignment submissions in a zip file
@@ -4405,6 +4554,10 @@ class assign {
             $downloadurl = '/mod/assign/view.php?id=' . $cmid . '&action=downloadall';
             $links[$downloadurl] = get_string('downloadall', 'assign');
         }
+        if ($this->is_any_feedback_plugin_enabled() && $this->count_submissions()) {
+            $downloadurl = '/mod/assign/view.php?id=' . $cmid . '&action=downloadallfeedback';
+            $links[$downloadurl] = get_string('downloadallfeedback', 'assign');
+        }
         if ($this->is_blind_marking() &&
                 has_capability('mod/assign:revealidentities', $this->get_context())) {
             $revealidentitiesurl = '/mod/assign/view.php?id=' . $cmid . '&action=revealidentities';
@@ -4947,6 +5100,8 @@ class assign {
 
             if ($data->operation == 'downloadselected') {
                 $this->download_submissions($userlist);
+            } else if ($data->operation == 'downloadselectedfeedback') {
+                $this->download_feedback(null, $userlist);
             } else {
                 foreach ($userlist as $userid) {
                     if ($data->operation == 'lock') {

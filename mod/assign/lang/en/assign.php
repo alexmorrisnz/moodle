@@ -152,10 +152,13 @@ $string['deleteallsubmissions'] = 'Delete all submissions';
 $string['description'] = 'Description';
 $string['disabled'] = 'Disabled';
 $string['downloadall'] = 'Download all submissions';
+$string['downloadallfeedback'] = 'Download all annotated PDFs';
+$string['nofeedback'] = 'No feedback has been given for this assignment';
 $string['download all submissions'] = 'Download all submissions in a zip file.';
 $string['downloadasfolders'] = 'Download submissions in folders';
 $string['downloadasfolders_help'] = 'Assignment submissions may be downloaded in folders. Each submission is then put in a separate folder, with the folder structure kept for any subfolders, and files are not renamed.';
 $string['downloadselectedsubmissions'] = 'Download selected submissions';
+$string['downloadselectedfeedback'] = 'Download selected annotated PDFs';
 $string['duedate'] = 'Due date';
 $string['duedatecolon'] = 'Due date: {$a}';
 $string['duedate_help'] = 'This is when the assignment is due. Submissions will still be allowed after this date, but any assignments submitted after this date will be marked as late. Set an assignment cut-off date to prevent submissions after a certain date.';
@@ -626,6 +629,7 @@ $string['viewsubmissiongradingtable'] = 'View submission grading table.';
 $string['viewrevealidentitiesconfirm'] = 'View reveal student identities confirmation page.';
 $string['workflowfilter'] = 'Workflow filter';
 $string['xofy'] = '{$a->x} of {$a->y}';
+$string['batchoperationconfirmdownloadselectedfeedback'] = 'Download selected annotated PDF files?';
 
 // Deprecated since Moodle 3.8.
 $string['duedateno'] = 'No due date';

@@ -456,4 +456,33 @@ class assign_feedback_editpdf extends assign_feedback_plugin {
     public function get_config_for_external() {
         return (array) $this->get_config();
     }
+
+    /**
+     * Produce a list of files suitable for export that represent this feedback
+     *
+     * @param stdClass $grade The grade
+     * @param stdClass $student unused
+     * @return array - return an array of files indexed by filename
+     */
+    public function get_files(stdClass $grade, stdClass $student) {
+        $result = array();
+        $fs = get_file_storage();
+
+        $files = $fs->get_area_files($this->assignment->get_context()->id,
+            'assignfeedback_editpdf',
+            document_services::FINAL_PDF_FILEAREA,
+            $grade->id,
+            'timemodified',
+            false);
+
+        foreach ($files as $file) {
+            // Do we return the full folder path or just the file name?
+            if (isset($grade->exportfullpath) && $grade->exportfullpath == false) {
+                $result[$file->get_filename()] = $file;
+            } else {
+                $result[$file->get_filepath().$file->get_filename()] = $file;
+            }
+        }
+        return $result;
+    }
 }
