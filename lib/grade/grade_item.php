@@ -1937,6 +1937,7 @@ class grade_item extends grade_object {
      * @param int $datesubmitted A timestamp of when the student's work was submitted
      * @param grade_grade $grade A grade object, useful for bulk upgrades
      * @param array $feedbackfiles An array identifying the location of files we want to copy to the gradebook feedback area.
+     * @param int $hidden A timestamp that the grade is hidden until
      *        Example -
      *        [
      *            'contextid' => 1,
@@ -1948,7 +1949,7 @@ class grade_item extends grade_object {
      */
     public function update_raw_grade($userid, $rawgrade = false, $source = null, $feedback = false,
             $feedbackformat = FORMAT_MOODLE, $usermodified = null, $dategraded = null, $datesubmitted=null,
-            $grade = null, array $feedbackfiles = []) {
+            $grade = null, array $feedbackfiles = [], $hidden = 0) {
         global $USER;
 
         $result = true;
@@ -1996,6 +1997,7 @@ class grade_item extends grade_object {
         $grade->rawgrademin = $this->grademin;
         $grade->rawgrademax = $this->grademax;
         $grade->rawscaleid  = $this->scaleid;
+        $grade->hidden = $hidden;
 
         // change raw grade?
         if ($rawgrade !== false) {

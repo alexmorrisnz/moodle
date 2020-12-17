@@ -258,6 +258,7 @@ function grade_update($source, $courseid, $itemtype, $itemmodule, $iteminstance,
         $usermodified   = $USER->id;
         $datesubmitted  = null;
         $dategraded     = null;
+        $hidden         = 0;
 
         if (array_key_exists('rawgrade', $grade)) {
             $rawgrade = $grade['rawgrade'];
@@ -287,9 +288,13 @@ function grade_update($source, $courseid, $itemtype, $itemmodule, $iteminstance,
             $dategraded = $grade['dategraded'];
         }
 
+        if (array_key_exists('hidden', $grade)) {
+            $hidden = $grade['hidden'];
+        }
+
         // update or insert the grade
         if (!$grade_item->update_raw_grade($userid, $rawgrade, $source, $feedback, $feedbackformat, $usermodified,
-                $dategraded, $datesubmitted, $grade_grade, $feedbackfiles)) {
+                $dategraded, $datesubmitted, $grade_grade, $feedbackfiles, $hidden)) {
             $failed = true;
         }
     }
