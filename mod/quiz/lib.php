@@ -715,12 +715,24 @@ function quiz_update_grades($quiz, $userid = 0, $nullifnone = true) {
         quiz_grade_item_update($quiz);
 
     } else if ($grades = quiz_get_user_grades($quiz, $userid)) {
+        foreach ($grades as $grade) {
+            $immediatereviewoptions = mod_quiz_display_options::make_from_quiz($quiz,
+                mod_quiz_display_options::IMMEDIATELY_AFTER);
+            if ($immediatereviewoptions->marks < question_display_options::MARK_AND_MAX) {
+                $grade->hidden = time() + 120;
+            }
+        }
         quiz_grade_item_update($quiz, $grades);
 
     } else if ($userid && $nullifnone) {
         $grade = new stdClass();
         $grade->userid = $userid;
         $grade->rawgrade = null;
+        $immediatereviewoptions = mod_quiz_display_options::make_from_quiz($quiz,
+            mod_quiz_display_options::IMMEDIATELY_AFTER);
+        if ($immediatereviewoptions->marks < question_display_options::MARK_AND_MAX) {
+            $grade->hidden = time() + 120;
+        }
         quiz_grade_item_update($quiz, $grade);
 
     } else {
